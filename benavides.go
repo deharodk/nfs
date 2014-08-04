@@ -2,9 +2,7 @@ package main
 
 import (
 	l4g "code.google.com/p/log4go"
-	"database/sql"
 	"github.com/docopt/docopt-go"
-	"github.com/edmt/geiger/db"
 	"os"
 	"time"
 )
@@ -20,7 +18,7 @@ func main() {
 	usage := `geiger.
 
 Usage:
-  geiger count --path=<path_location> [--rfc=<rfc>] [--date=<date>]
+  geiger list --path=<path_location>
   geiger -h | --help
   geiger -v | --version
 
@@ -32,38 +30,28 @@ Options:
 
 	arguments, _ := docopt.Parse(usage, nil, true, "geiger 0.0.0", false)
 	l4g.Debug(arguments)
-	connectionParamaters := db.ConnectionParameters{
-		Host:     os.Getenv("GCHOST"),
-		Port:     os.Getenv("GCPORT"),
-		User:     os.Getenv("GCSQLUSER"),
-		Password: os.Getenv("GCSQLPASSWORD"),
-		Database: os.Getenv("GCDATABASE"),
-	}
-	conn := connectionParamaters.MakeConnection()
-	defer conn.Close()
-	db.Ping(conn)
 	c := make(<-chan int)
 
-	if arguments["count"].(bool) {
-		c = WriteCount(GenCount(arguments), conn)
+	if arguments["list"].(bool) {
+		c = WriteCount(Gen(arguments))
 	}
 	l4g.Info("geiger stopped")
 	time.Sleep(time.Second)
 	<-c
 }
 
-func GenCount(options map[string]interface{}) <-chan GeigerRecord {
-	out := make(chan GeigerRecord)
+func Gen(options map[string]interface{}) <-chan string {
+	out := make(chan string)
 	go func() {
 		globPatternList := GetGlobPatternList(options)
 		l4g.Info("Directorios encontrados: %d", len(globPatternList))
 
 		for _, globPatternTuple := range globPatternList {
-			files, _ := ListFiles(globPatternTuple.Path)
-			l4g.Info("%d archivos en directorio %s", len(files), globPatternTuple.Path)
+			files, _ := ListFiles(globPatternTuple)
+			l4g.Info("%d archivos en directorio %s", len(files), globPatternTuple)
 			for _, filePath := range files {
-				l4g.Debug("Procesando archivo: %s", filePath)
-				out <- CountFile(TupleRFCFilepath{globPatternTuple, filePath})
+				out <- filePath
+				splitFile(filePath) //CountFile(TupleRFCFilepath{globPatternTuple, filePath)
 			}
 		}
 		close(out)
@@ -71,11 +59,11 @@ func GenCount(options map[string]interface{}) <-chan GeigerRecord {
 	return out
 }
 
-func WriteCount(in <-chan GeigerRecord, conn *sql.DB) <-chan int {
+func WriteCount(in <-chan string) <-chan int {
 	out := make(chan int)
 	go func() {
 		for record := range in {
-			record.Save(conn)
+			l4g.Debug(record)
 		}
 		out <- 1
 		close(out)

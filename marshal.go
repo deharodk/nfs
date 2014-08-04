@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"regexp"
 	"strings"
 )
 
@@ -42,20 +43,21 @@ type TFDTimbreFiscalDigital struct {
 	XMLName           xml.Name `xml:"TimbreFiscalDigital"`
 	NumeroCertificado string   `xml:"noCertificadoSAT,attr"`
 	FechaTimbrado     string   `xml:"FechaTimbrado,attr"`
+	UUID              string   `xml:"UUID,attr"`
 }
 
 func (t TFDTimbreFiscalDigital) String() string {
 	return fmt.Sprintf("%s\t%s", t.NumeroCertificado, t.FechaTimbrado)
 }
 
-func (d Doc) String() string {
-	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s",
-		d.Emisor.RFC,
-		d.Receptor.RFC,
-		d.Complemento.TimbreFiscalDigital.NumeroCertificado,
-		d.Complemento.TimbreFiscalDigital.FechaTimbrado,
-		d.Version)
-}
+// func (d Doc) String() string {
+// 	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s",
+// 		d.Emisor.RFC,
+// 		d.Receptor.RFC,
+// 		d.Complemento.TimbreFiscalDigital.NumeroCertificado,
+// 		d.Complemento.TimbreFiscalDigital.FechaTimbrado,
+// 		d.Version)
+// }
 
 func (c CFDIConcepto) ContainsKeyword() bool {
 	desc := strings.ToLower(c.Descripcion)
@@ -73,19 +75,33 @@ func (d Doc) ContainsGasKeyword() bool {
 	return false
 }
 
-func parseXml(path string) {
-	xmlFile, err := os.Open(path)
+func parseXml(doc []byte) Doc {
+	var query Doc
+	xml.Unmarshal(doc, &query)
+	return query
+}
+
+func split(path string) [][]byte {
+	file, err := os.Open(path)
 	if err != nil {
 		fmt.Println("Error opening file:", err)
-		return
 	}
-	defer xmlFile.Close()
+	defer file.Close()
 
-	rawContent, _ := ioutil.ReadAll(xmlFile)
+	rawContent, _ := ioutil.ReadAll(file)
+	re := regexp.MustCompile(`(?s)<cfdi:Comprobante\b*[^>]*>(.*?)</cfdi:Comprobante>`)
+	matches := re.FindAll(rawContent, -1)
+	return matches
+}
 
-	var query Doc
-	xml.Unmarshal(rawContent, &query)
-	if query.ContainsGasKeyword() {
-		fmt.Println(query)
+func splitFile(path string) {
+	matches := split(path)
+	for _, doc := range matches {
+		cfdi := parseXml(doc)
+		// fmt.Println(len(matches) != 1)
+		fmt.Printf("'%s'\t%s\t%d\n",
+			cfdi.Complemento.TimbreFiscalDigital.UUID,
+			cfdi.Emisor.RFC,
+			len(matches))
 	}
 }
