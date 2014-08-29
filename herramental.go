@@ -2,9 +2,9 @@ package main
 
 import (
 	l4g "code.google.com/p/log4go"
+	"fmt"
 	"github.com/docopt/docopt-go"
 	"os"
-	"time"
 )
 
 const LOG_CONFIGURATION_FILE = "logging-conf.xml"
@@ -36,7 +36,6 @@ Options:
 		c = WriteCount(Gen(arguments))
 	}
 	l4g.Info("geiger stopped")
-	time.Sleep(time.Second)
 	<-c
 }
 
@@ -51,7 +50,7 @@ func Gen(options map[string]interface{}) <-chan string {
 			l4g.Info("%d archivos en directorio %s", len(files), globPatternTuple)
 			for _, filePath := range files {
 				out <- filePath
-				splitFile(filePath) //CountFile(TupleRFCFilepath{globPatternTuple, filePath)
+				fmt.Println(EncodeAsRow(filePath))
 			}
 		}
 		close(out)

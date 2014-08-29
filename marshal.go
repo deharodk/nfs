@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"regexp"
 	"strings"
 )
 
@@ -13,10 +12,50 @@ type Doc struct {
 	XMLName     xml.Name        `xml:"Comprobante"`
 	Tipo        string          `xml:"tipoDeComprobante,attr"`
 	Version     string          `xml:"version,attr"`
+	Serie       string          `xml:"serie,attr"`
+	Folio       string          `xml:"folio,attr"`
+	Fecha       string          `xml:"fecha,attr"`
+	Moneda      string          `xml:"Moneda,attr"`
+	TipoCambio  string          `xml:"TipoCambio,attr"`
+	Total       string          `xml:"total,attr"`
+	SubTotal    string          `xml:"subTotal,attr"`
 	Emisor      CFDIEmisor      `xml:"Emisor"`
 	Receptor    CFDIReceptor    `xml:"Receptor"`
 	Conceptos   []CFDIConcepto  `xml:"Conceptos>Concepto"`
+	Impuestos   CFDIImpuestos   `xml:"Impuestos"`
 	Complemento CFDIComplemento `xml:"Complemento"`
+	Addenda     CFDIAddenda     `xml:"Addenda"`
+}
+
+type CFDIImpuestos struct {
+	XMLName   xml.Name      `xml:"Impuestos"`
+	Total     string        `xml:"totalImpuestosTrasladados,attr"`
+	Traslados CFDITraslados `xml:"Traslados"`
+}
+
+type CFDITraslados struct {
+	XMLName  xml.Name     `xml:"Traslados"`
+	Traslado CFDITraslado `xml:"Traslado"`
+}
+
+type CFDITraslado struct {
+	XMLName xml.Name `xml:"Traslado"`
+	Importe string   `xml:"importe,attr"`
+}
+
+type CFDIAddenda struct {
+	XMLName            xml.Name               `xml:"Addenda"`
+	AddendaBuzonFiscal AddendaBuzonFiscalNode `xml:"AddendaBuzonFiscal"`
+}
+
+type AddendaBuzonFiscalNode struct {
+	XMLName xml.Name `xml:"AddendaBuzonFiscal"`
+	CFD     CFDNode  `xml:"CFD"`
+}
+
+type CFDNode struct {
+	XMLName xml.Name `xml:"CFD"`
+	RefID   string   `xml:"refID,attr"`
 }
 
 type CFDIEmisor struct {
@@ -27,6 +66,7 @@ type CFDIEmisor struct {
 type CFDIReceptor struct {
 	XMLName xml.Name `xml:"Receptor"`
 	RFC     string   `xml:"rfc,attr"`
+	Nombre  string   `xml:"nombre,attr"`
 }
 
 type CFDIConcepto struct {
@@ -50,58 +90,35 @@ func (t TFDTimbreFiscalDigital) String() string {
 	return fmt.Sprintf("%s\t%s", t.NumeroCertificado, t.FechaTimbrado)
 }
 
-// func (d Doc) String() string {
-// 	return fmt.Sprintf("%s\t%s\t%s\t%s\t%s",
-// 		d.Emisor.RFC,
-// 		d.Receptor.RFC,
-// 		d.Complemento.TimbreFiscalDigital.NumeroCertificado,
-// 		d.Complemento.TimbreFiscalDigital.FechaTimbrado,
-// 		d.Version)
-// }
-
-func (c CFDIConcepto) ContainsKeyword() bool {
-	desc := strings.ToLower(c.Descripcion)
-	return strings.Contains(desc, "magna") ||
-		strings.Contains(desc, "premium") ||
-		strings.Contains(desc, "diesel")
-}
-
-func (d Doc) ContainsGasKeyword() bool {
-	for _, concept := range d.Conceptos {
-		if concept.ContainsKeyword() {
-			return true
-		}
-	}
-	return false
-}
-
 func parseXml(doc []byte) Doc {
 	var query Doc
 	xml.Unmarshal(doc, &query)
 	return query
 }
 
-func split(path string) [][]byte {
+func EncodeAsRow(path string) string {
 	file, err := os.Open(path)
 	if err != nil {
 		fmt.Println("Error opening file:", err)
 	}
 	defer file.Close()
-
 	rawContent, _ := ioutil.ReadAll(file)
-	re := regexp.MustCompile(`(?s)<cfdi:Comprobante\b*[^>]*>(.*?)</cfdi:Comprobante>`)
-	matches := re.FindAll(rawContent, -1)
-	return matches
-}
+	cfdi := parseXml(rawContent)
 
-func splitFile(path string) {
-	matches := split(path)
-	for _, doc := range matches {
-		cfdi := parseXml(doc)
-		// fmt.Println(len(matches) != 1)
-		fmt.Printf("'%s'\t%s\t%d\n",
-			cfdi.Complemento.TimbreFiscalDigital.UUID,
-			cfdi.Emisor.RFC,
-			len(matches))
-	}
+	row := []string{
+		cfdi.Addenda.AddendaBuzonFiscal.CFD.RefID,
+		cfdi.Receptor.RFC,
+		cfdi.Receptor.Nombre,
+		cfdi.Serie,
+		cfdi.Folio,
+		cfdi.Fecha,
+		cfdi.Moneda,
+		cfdi.TipoCambio,
+		cfdi.Total,
+		cfdi.Impuestos.Traslados.Traslado.Importe,
+		cfdi.SubTotal,
+		cfdi.Tipo,
+		cfdi.Complemento.TimbreFiscalDigital.FechaTimbrado,
+		cfdi.Complemento.TimbreFiscalDigital.UUID}
+	return strings.Join(row, "\t")
 }
