@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/docopt/docopt-go"
 	"os"
+	"strings"
 )
 
 const LOG_CONFIGURATION_FILE = "logging-conf.xml"
@@ -33,6 +34,7 @@ Options:
 	c := make(<-chan int)
 
 	if arguments["list"].(bool) {
+		fmt.Println(strings.Join([]string{"NoFactura","FechaGeneracion","razonSocial","claveprod", "cant","unidad","descripcion","Valorunit","importe"}, "\t"))
 		c = WriteCount(Gen(arguments))
 	}
 	l4g.Info("geiger stopped")
@@ -50,7 +52,9 @@ func Gen(options map[string]interface{}) <-chan string {
 			l4g.Info("%d archivos en directorio %s", len(files), globPatternTuple)
 			for _, filePath := range files {
 				out <- filePath
-				fmt.Println(EncodeAsRow(filePath))
+				for _, row := range EncodeAsRows(filePath) {
+					fmt.Println(row)
+				}
 			}
 		}
 		close(out)

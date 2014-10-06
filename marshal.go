@@ -72,6 +72,11 @@ type CFDIReceptor struct {
 type CFDIConcepto struct {
 	XMLName     xml.Name `xml:"Concepto"`
 	Descripcion string   `xml:"descripcion,attr"`
+	NoIdentificacion string `xml:"noIdentificacion,attr"`
+	Cantidad string `xml:"cantidad,attr"`
+	Unidad string `xml:"unidad,attr"`
+	ValorUnitario string `xml:"valorUnitario,attr"`
+	Importe string `xml:"importe,attr"`
 }
 
 type CFDIComplemento struct {
@@ -86,8 +91,8 @@ type TFDTimbreFiscalDigital struct {
 	UUID              string   `xml:"UUID,attr"`
 }
 
-func (t TFDTimbreFiscalDigital) String() string {
-	return fmt.Sprintf("%s\t%s", t.NumeroCertificado, t.FechaTimbrado)
+func (d Doc) NumeroDeFactura() string {
+	return fmt.Sprintf("%s-%s", d.Serie, d.Folio)
 }
 
 func parseXml(doc []byte) Doc {
@@ -96,7 +101,7 @@ func parseXml(doc []byte) Doc {
 	return query
 }
 
-func EncodeAsRow(path string) string {
+func EncodeAsRows(path string) []string {
 	file, err := os.Open(path)
 	if err != nil {
 		fmt.Println("Error opening file:", err)
@@ -105,20 +110,10 @@ func EncodeAsRow(path string) string {
 	rawContent, _ := ioutil.ReadAll(file)
 	cfdi := parseXml(rawContent)
 
-	row := []string{
-		cfdi.Addenda.AddendaBuzonFiscal.CFD.RefID,
-		cfdi.Receptor.RFC,
-		cfdi.Receptor.Nombre,
-		cfdi.Serie,
-		cfdi.Folio,
-		cfdi.Fecha,
-		cfdi.Moneda,
-		cfdi.TipoCambio,
-		cfdi.Total,
-		cfdi.Impuestos.Traslados.Traslado.Importe,
-		cfdi.SubTotal,
-		cfdi.Tipo,
-		cfdi.Complemento.TimbreFiscalDigital.FechaTimbrado,
-		cfdi.Complemento.TimbreFiscalDigital.UUID}
-	return strings.Join(row, "\t")
+    var records []string
+	for _, c := range cfdi.Conceptos {
+		concept := []string{cfdi.NumeroDeFactura(), cfdi.Fecha, cfdi.Receptor.Nombre, c.NoIdentificacion, c.Cantidad, c.Unidad, c.Descripcion, c.ValorUnitario, c.Importe}
+		records = append(records, strings.Join(concept, "\t"))
+	}
+	return records
 }
