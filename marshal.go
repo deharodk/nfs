@@ -112,7 +112,7 @@ func EncodeAsRows(path string) []string {
 
     var records []string
 	for _, c := range cfdi.Conceptos {
-		concept := []string{cfdi.NumeroDeFactura(), cfdi.Fecha, cfdi.Receptor.Nombre, c.NoIdentificacion, c.Cantidad, c.Unidad, c.Descripcion, c.ValorUnitario, c.Importe}
+		concept := []string{cfdi.Complemento.TimbreFiscalDigital.UUID, c.Descripcion, c.NoIdentificacion}
 		records = append(records, strings.Join(concept, "\t"))
 	}
 	return records
