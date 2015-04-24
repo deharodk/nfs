@@ -34,7 +34,7 @@ Options:
 	c := make(<-chan int)
 
 	if arguments["list"].(bool) {
-		fmt.Println(strings.Join([]string{"UUID", "concepto", "clave"}, "\t"))
+		fmt.Println(strings.Join([]string{"UUID", "MetodoPago", "LugarDeExpedicion"}, "\t"))
 		c = WriteCount(Gen(arguments))
 	}
 	l4g.Info("geiger stopped")

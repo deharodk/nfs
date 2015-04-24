@@ -9,22 +9,24 @@ import (
 )
 
 type Doc struct {
-	XMLName     xml.Name        `xml:"Comprobante"`
-	Tipo        string          `xml:"tipoDeComprobante,attr"`
-	Version     string          `xml:"version,attr"`
-	Serie       string          `xml:"serie,attr"`
-	Folio       string          `xml:"folio,attr"`
-	Fecha       string          `xml:"fecha,attr"`
-	Moneda      string          `xml:"Moneda,attr"`
-	TipoCambio  string          `xml:"TipoCambio,attr"`
-	Total       string          `xml:"total,attr"`
-	SubTotal    string          `xml:"subTotal,attr"`
-	Emisor      CFDIEmisor      `xml:"Emisor"`
-	Receptor    CFDIReceptor    `xml:"Receptor"`
-	Conceptos   []CFDIConcepto  `xml:"Conceptos>Concepto"`
-	Impuestos   CFDIImpuestos   `xml:"Impuestos"`
-	Complemento CFDIComplemento `xml:"Complemento"`
-	Addenda     CFDIAddenda     `xml:"Addenda"`
+	XMLName         xml.Name        `xml:"Comprobante"`
+	Tipo            string          `xml:"tipoDeComprobante,attr"`
+	Version         string          `xml:"version,attr"`
+	Serie           string          `xml:"serie,attr"`
+	Folio           string          `xml:"folio,attr"`
+	Fecha           string          `xml:"fecha,attr"`
+	Moneda          string          `xml:"Moneda,attr"`
+	TipoCambio      string          `xml:"TipoCambio,attr"`
+	Total           string          `xml:"total,attr"`
+	SubTotal        string          `xml:"subTotal,attr"`
+	MetodoDePago    string          `xml:"metodoDePago,attr"`
+	LugarExpedicion string          `xml:"LugarExpedicion,attr"`
+	Emisor          CFDIEmisor      `xml:"Emisor"`
+	Receptor        CFDIReceptor    `xml:"Receptor"`
+	Conceptos       []CFDIConcepto  `xml:"Conceptos>Concepto"`
+	Impuestos       CFDIImpuestos   `xml:"Impuestos"`
+	Complemento     CFDIComplemento `xml:"Complemento"`
+	Addenda         CFDIAddenda     `xml:"Addenda"`
 }
 
 type CFDIImpuestos struct {
@@ -70,18 +72,19 @@ type CFDIReceptor struct {
 }
 
 type CFDIConcepto struct {
-	XMLName     xml.Name `xml:"Concepto"`
-	Descripcion string   `xml:"descripcion,attr"`
-	NoIdentificacion string `xml:"noIdentificacion,attr"`
-	Cantidad string `xml:"cantidad,attr"`
-	Unidad string `xml:"unidad,attr"`
-	ValorUnitario string `xml:"valorUnitario,attr"`
-	Importe string `xml:"importe,attr"`
+	XMLName          xml.Name `xml:"Concepto"`
+	Descripcion      string   `xml:"descripcion,attr"`
+	NoIdentificacion string   `xml:"noIdentificacion,attr"`
+	Cantidad         string   `xml:"cantidad,attr"`
+	Unidad           string   `xml:"unidad,attr"`
+	ValorUnitario    string   `xml:"valorUnitario,attr"`
+	Importe          string   `xml:"importe,attr"`
 }
 
 type CFDIComplemento struct {
 	XMLName             xml.Name               `xml:"Complemento"`
 	TimbreFiscalDigital TFDTimbreFiscalDigital `xml:"TimbreFiscalDigital"`
+	Nomina              NominaNomina           `xml:"Nomina"`
 }
 
 type TFDTimbreFiscalDigital struct {
@@ -89,6 +92,12 @@ type TFDTimbreFiscalDigital struct {
 	NumeroCertificado string   `xml:"noCertificadoSAT,attr"`
 	FechaTimbrado     string   `xml:"FechaTimbrado,attr"`
 	UUID              string   `xml:"UUID,attr"`
+}
+
+type NominaNomina struct {
+	XMLName          xml.Name `xml:"Nomina"`
+	FechaInicialPago string   `xml:"FechaInicialPago,attr"`
+	FechaFinalPago   string   `xml:"FechaFinalPago,attr"`
 }
 
 func (d Doc) NumeroDeFactura() string {
@@ -110,10 +119,10 @@ func EncodeAsRows(path string) []string {
 	rawContent, _ := ioutil.ReadAll(file)
 	cfdi := parseXml(rawContent)
 
-    var records []string
-	for _, c := range cfdi.Conceptos {
-		concept := []string{cfdi.Complemento.TimbreFiscalDigital.UUID, c.Descripcion, c.NoIdentificacion}
-		records = append(records, strings.Join(concept, "\t"))
-	}
+	var records []string
+	var record = []string{cfdi.Complemento.TimbreFiscalDigital.UUID,
+		cfdi.MetodoDePago,
+		cfdi.LugarExpedicion}
+	records = append(records, strings.Join(record, "\t"))
 	return records
 }
