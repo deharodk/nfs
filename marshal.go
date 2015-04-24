@@ -9,22 +9,24 @@ import (
 )
 
 type Doc struct {
-	XMLName     xml.Name        `xml:"Comprobante"`
-	Tipo        string          `xml:"tipoDeComprobante,attr"`
-	Version     string          `xml:"version,attr"`
-	Serie       string          `xml:"serie,attr"`
-	Folio       string          `xml:"folio,attr"`
-	Fecha       string          `xml:"fecha,attr"`
-	Moneda      string          `xml:"Moneda,attr"`
-	TipoCambio  string          `xml:"TipoCambio,attr"`
-	Total       string          `xml:"total,attr"`
-	SubTotal    string          `xml:"subTotal,attr"`
-	Emisor      CFDIEmisor      `xml:"Emisor"`
-	Receptor    CFDIReceptor    `xml:"Receptor"`
-	Conceptos   []CFDIConcepto  `xml:"Conceptos>Concepto"`
-	Impuestos   CFDIImpuestos   `xml:"Impuestos"`
-	Complemento CFDIComplemento `xml:"Complemento"`
-	Addenda     CFDIAddenda     `xml:"Addenda"`
+	XMLName         xml.Name        `xml:"Comprobante"`
+	Tipo            string          `xml:"tipoDeComprobante,attr"`
+	Version         string          `xml:"version,attr"`
+	Serie           string          `xml:"serie,attr"`
+	Folio           string          `xml:"folio,attr"`
+	Fecha           string          `xml:"fecha,attr"`
+	Moneda          string          `xml:"Moneda,attr"`
+	TipoCambio      string          `xml:"TipoCambio,attr"`
+	Total           string          `xml:"total,attr"`
+	SubTotal        string          `xml:"subTotal,attr"`
+	MetodoDePago    string          `xml:"metodoDePago,attr"`
+	LugarExpedicion string          `xml:"LugarExpedicion,attr"`
+	Emisor          CFDIEmisor      `xml:"Emisor"`
+	Receptor        CFDIReceptor    `xml:"Receptor"`
+	Conceptos       []CFDIConcepto  `xml:"Conceptos>Concepto"`
+	Impuestos       CFDIImpuestos   `xml:"Impuestos"`
+	Complemento     CFDIComplemento `xml:"Complemento"`
+	Addenda         CFDIAddenda     `xml:"Addenda"`
 }
 
 type CFDIImpuestos struct {
@@ -70,13 +72,19 @@ type CFDIReceptor struct {
 }
 
 type CFDIConcepto struct {
-	XMLName     xml.Name `xml:"Concepto"`
-	Descripcion string   `xml:"descripcion,attr"`
+	XMLName          xml.Name `xml:"Concepto"`
+	Descripcion      string   `xml:"descripcion,attr"`
+	NoIdentificacion string   `xml:"noIdentificacion,attr"`
+	Cantidad         string   `xml:"cantidad,attr"`
+	Unidad           string   `xml:"unidad,attr"`
+	ValorUnitario    string   `xml:"valorUnitario,attr"`
+	Importe          string   `xml:"importe,attr"`
 }
 
 type CFDIComplemento struct {
 	XMLName             xml.Name               `xml:"Complemento"`
 	TimbreFiscalDigital TFDTimbreFiscalDigital `xml:"TimbreFiscalDigital"`
+	Nomina              NominaNomina           `xml:"Nomina"`
 }
 
 type TFDTimbreFiscalDigital struct {
@@ -86,8 +94,14 @@ type TFDTimbreFiscalDigital struct {
 	UUID              string   `xml:"UUID,attr"`
 }
 
-func (t TFDTimbreFiscalDigital) String() string {
-	return fmt.Sprintf("%s\t%s", t.NumeroCertificado, t.FechaTimbrado)
+type NominaNomina struct {
+	XMLName          xml.Name `xml:"Nomina"`
+	FechaInicialPago string   `xml:"FechaInicialPago,attr"`
+	FechaFinalPago   string   `xml:"FechaFinalPago,attr"`
+}
+
+func (d Doc) NumeroDeFactura() string {
+	return fmt.Sprintf("%s-%s", d.Serie, d.Folio)
 }
 
 func parseXml(doc []byte) Doc {
@@ -96,7 +110,7 @@ func parseXml(doc []byte) Doc {
 	return query
 }
 
-func EncodeAsRow(path string) string {
+func EncodeAsRows(path string) []string {
 	file, err := os.Open(path)
 	if err != nil {
 		fmt.Println("Error opening file:", err)
@@ -105,20 +119,10 @@ func EncodeAsRow(path string) string {
 	rawContent, _ := ioutil.ReadAll(file)
 	cfdi := parseXml(rawContent)
 
-	row := []string{
-		cfdi.Addenda.AddendaBuzonFiscal.CFD.RefID,
-		cfdi.Receptor.RFC,
-		cfdi.Receptor.Nombre,
-		cfdi.Serie,
-		cfdi.Folio,
-		cfdi.Fecha,
-		cfdi.Moneda,
-		cfdi.TipoCambio,
-		cfdi.Total,
-		cfdi.Impuestos.Traslados.Traslado.Importe,
-		cfdi.SubTotal,
-		cfdi.Tipo,
-		cfdi.Complemento.TimbreFiscalDigital.FechaTimbrado,
-		cfdi.Complemento.TimbreFiscalDigital.UUID}
-	return strings.Join(row, "\t")
+	var records []string
+	var record = []string{cfdi.Complemento.TimbreFiscalDigital.UUID,
+		cfdi.MetodoDePago,
+		cfdi.LugarExpedicion}
+	records = append(records, strings.Join(record, "\t"))
+	return records
 }
