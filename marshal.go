@@ -121,8 +121,7 @@ func EncodeAsRows(path string) []string {
 
 	var records []string
 	var record = []string{cfdi.Complemento.TimbreFiscalDigital.UUID,
-		cfdi.MetodoDePago,
-		cfdi.LugarExpedicion}
+		cfdi.MetodoDePago}
 	records = append(records, strings.Join(record, "\t"))
 	return records
 }
